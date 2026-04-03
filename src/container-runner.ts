@@ -16,8 +16,15 @@ import {
   ONECLI_URL,
   TIMEZONE,
 } from './config.js';
+import { readEnvFile } from './env.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
 import { logger } from './logger.js';
+
+const copilotEnv = readEnvFile([
+  'NANOCLAW_SDK',
+  'COPILOT_MODEL',
+  'GITHUB_TOKEN',
+]);
 import {
   CONTAINER_RUNTIME_BIN,
   hostGatewayArgs,
@@ -278,19 +285,32 @@ async function buildContainerArgs(
   }
 
   // Pass GITHUB_TOKEN for GitHub Copilot SDK and gh CLI
-  const githubToken = process.env.GITHUB_TOKEN;
+  const githubToken = process.env.GITHUB_TOKEN || copilotEnv.GITHUB_TOKEN;
   if (githubToken) {
     args.push('-e', `GITHUB_TOKEN=${githubToken}`);
   }
 
   // Pass SDK backend selection and Copilot model for container agents
-  const nanoclavSdk = process.env.NANOCLAW_SDK;
+  const nanoclavSdk = process.env.NANOCLAW_SDK || copilotEnv.NANOCLAW_SDK;
   if (nanoclavSdk) {
     args.push('-e', `NANOCLAW_SDK=${nanoclavSdk}`);
   }
-  const copilotModel = process.env.COPILOT_MODEL;
+  const copilotModel = process.env.COPILOT_MODEL || copilotEnv.COPILOT_MODEL;
   if (copilotModel) {
     args.push('-e', `COPILOT_MODEL=${copilotModel}`);
+  }
+
+  // Copilot SDK talks to GitHub/Copilot endpoints, not Anthropic.
+  // Bypass the OneCLI proxy for these hosts so requests aren't intercepted.
+  if (nanoclavSdk === 'copilot') {
+    args.push(
+      '-e',
+      'NO_PROXY=api.github.com,*.githubcopilot.com,*.github.com,github.com',
+    );
+    args.push(
+      '-e',
+      'no_proxy=api.github.com,*.githubcopilot.com,*.github.com,github.com',
+    );
   }
 
   // Runtime-specific args for host gateway resolution
