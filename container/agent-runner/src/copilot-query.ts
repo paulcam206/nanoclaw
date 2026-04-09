@@ -16,6 +16,10 @@ import {
   type MCPServerConfig,
 } from '@github/copilot-sdk';
 import fs from 'fs';
+import path from 'path';
+
+const WORKSPACE_GROUP = process.env.NANOCLAW_GROUP_DIR || '/workspace/group';
+const WORKSPACE_GLOBAL = process.env.NANOCLAW_GLOBAL_DIR || '/workspace/global';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,7 +122,7 @@ export async function runCopilotQuery(
   };
 
   // Load global CLAUDE.md as system context
-  const globalClaudeMdPath = '/workspace/global/CLAUDE.md';
+  const globalClaudeMdPath = path.join(WORKSPACE_GLOBAL, 'CLAUDE.md');
   let systemMessage: string | undefined;
   if (!containerInput.isMain && fs.existsSync(globalClaudeMdPath)) {
     systemMessage = fs.readFileSync(globalClaudeMdPath, 'utf-8');
@@ -129,7 +133,7 @@ export async function runCopilotQuery(
   const sessionConfig: SessionConfig = {
     model,
     streaming: true,
-    workingDirectory: '/workspace/group',
+    workingDirectory: WORKSPACE_GROUP,
     mcpServers,
     onPermissionRequest: approveAll,
     ...(systemMessage ? { systemMessage: { content: systemMessage } } : {}),

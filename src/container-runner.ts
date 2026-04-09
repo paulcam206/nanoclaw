@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 
 import {
+  CONTAINER_BACKEND,
   CONTAINER_IMAGE,
   CONTAINER_MAX_OUTPUT_SIZE,
   CONTAINER_TIMEOUT,
@@ -59,13 +60,13 @@ export interface ContainerOutput {
   error?: string;
 }
 
-interface VolumeMount {
+export interface VolumeMount {
   hostPath: string;
   containerPath: string;
   readonly: boolean;
 }
 
-function buildVolumeMounts(
+export function buildVolumeMounts(
   group: RegisteredGroup,
   isMain: boolean,
 ): VolumeMount[] {
@@ -353,6 +354,15 @@ export async function runContainerAgent(
   onProcess: (proc: ChildProcess, containerName: string) => void,
   onOutput?: (output: ContainerOutput) => Promise<void>,
 ): Promise<ContainerOutput> {
+  // Delegate to MXC runner when configured and available
+  if (CONTAINER_BACKEND === 'mxc') {
+    const { isMxcAvailable, runMxcAgent } = await import('./mxc-runner.js');
+    if (isMxcAvailable()) {
+      return runMxcAgent(group, input, onProcess, onOutput);
+    }
+    logger.warn('MXC backend configured but not available, falling back to Docker');
+  }
+
   const startTime = Date.now();
 
   const groupDir = resolveGroupFolderPath(group.folder);

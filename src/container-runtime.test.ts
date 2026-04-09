@@ -10,6 +10,11 @@ vi.mock('./logger.js', () => ({
   },
 }));
 
+// Mock config
+vi.mock('./config.js', () => ({
+  CONTAINER_BACKEND: 'docker',
+}));
+
 // Mock child_process — store the mock fn so tests can configure it
 const mockExecSync = vi.fn();
 vi.mock('child_process', () => ({
